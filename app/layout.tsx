@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <header className="flex items-center justify-between p-4 bg-white shadow-md">
   <div className="flex items-center gap-4">
     <img src="/logo-30mm.png" alt="Per mentis logo" className="h-12 w-auto" />
-    <h1 className="text-lg font-bold">Per mentis - forritasafn</h1>
+    <h1 className="text-lg font-bold">Per mentis - forritasafnið</h1>
   </div>
   <AuthControl />
 </header>
