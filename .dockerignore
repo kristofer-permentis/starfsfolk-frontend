@@ -1,0 +1,10 @@
+vim .dockerignore
+```
+```
+node_modules
+.next
+.git
+.gitignore
+README.md
+.env*
+.venv
