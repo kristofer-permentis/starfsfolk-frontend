@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Custom branding styles */
+
+/* Google fonts in header in layout.tsx instead
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap');
+ */
+
+:root {
+  --pm-black: #000000;
+  --pm-gray-dark: #4A5459;
+  --pm-gray: #85929A;
+  --pm-gray-light: #C2C9C7;
+  --pm-beige: #D6CEC5;
+  --pm-background: #EFF3F5;
+}
+
+html, body {
+  @apply bg-[--pm-background] text-[--pm-gray-dark] font-light min-h-screen;
+  font-family: 'Montserrat', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-bold text-[--pm-black];
+}
+
+h1 {
+  @apply text-2xl;
+}
+
+h2 {
+  @apply text-xl;
+}
+
+h3 {
+  @apply text-lg;
+}
+
+p {
+  @apply text-base;
+}
+
+button {
+  @apply font-medium transition-colors;
+  font-family: 'Montserrat', sans-serif;
+}
