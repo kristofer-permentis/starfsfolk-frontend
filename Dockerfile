@@ -14,6 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Set API base URL at build time
+ENV NEXT_PUBLIC_API_BASE=https://vefur.permentis.is
+
 # Build Next.js
 RUN npm run build
 
