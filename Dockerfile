@@ -16,6 +16,7 @@ COPY . .
 
 # Set API base URL at build time
 ENV NEXT_PUBLIC_API_BASE=https://vefur.permentis.is
+ENV NEXT_PUBLIC_LOCAL_BASE=https://vefur.permentis.is
 
 # Build Next.js
 RUN npm run build
