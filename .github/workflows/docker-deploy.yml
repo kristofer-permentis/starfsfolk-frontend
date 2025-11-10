@@ -36,26 +36,27 @@ jobs:
         docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
         docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
     
-    - name: Deploy to EC2
+    - name: Deploy to EC2 via SSM
       env:
-        EC2_HOST: ${{ secrets.EC2_HOST }}
-        EC2_USER: ${{ secrets.EC2_USER }}
-        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
       run: |
-        mkdir -p ~/.ssh
-        echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+        COMMAND_ID=$(aws ssm send-command \
+          --instance-ids $EC2_INSTANCE_ID \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=[
+            "aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
+            "docker pull ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest",
+            "docker stop starfsfolk-frontend || true",
+            "docker rm starfsfolk-frontend || true",
+            "docker run -d --name starfsfolk-frontend -p 3012:3000 --restart unless-stopped ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest",
+            "docker image prune -f"
+          ]' \
+          --output text \
+          --query "Command.CommandId")
         
-        ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST "bash -s" << EOF
-          aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
-          docker pull ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
-          docker stop starfsfolk-frontend || true
-          docker rm starfsfolk-frontend || true
-          docker run -d \
-            --name starfsfolk-frontend \
-            -p 3012:3000 \
-            --restart unless-stopped \
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
-          docker image prune -f
-        EOF
+        echo "Waiting for command to complete..."
+        aws ssm wait command-executed \
+          --command-id $COMMAND_ID \
+          --instance-id $EC2_INSTANCE_ID
+        
+        echo "Deployment completed successfully"
