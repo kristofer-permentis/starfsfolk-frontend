@@ -5,10 +5,7 @@ import RequireAuth from '@/components/RequireAuth';
 import Tabs from '@/components/Tabs';
 import FilesTable from '@/components/FilesTable';
 import SendMessageForm from '@/components/SendMessageForm';
-import UmbodTable from '@/components/umbod_starfsmenn';
 import WaitingListPage from '@/components/waitinglistclient';
-import FormRequestAdmin from '@/components/formrequestadmin';
-import ADHDWorkupAdminTable from "@/components/adhdworkupadmin";
 
 type TabKey = 'received' | 'sent' | 'send' | 'umbod_starfsmenn' | 'waitinglist' | 'formrequestadmin' | 'adhdworkupadmin';
 
