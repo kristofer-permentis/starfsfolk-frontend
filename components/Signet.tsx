@@ -23,10 +23,7 @@ export default function SignetPage() {
             { key: 'received', label: 'Móttaka' },
             { key: 'sent', label: 'Sent' },
             { key: 'send', label: 'Senda nýja skrá' },
-            { key: 'umbod_starfsmenn', label: 'Umboðskerfi' },
               { key: 'waitinglist', label: 'Skilaboð á biðlista' },
-              { key: 'formrequestadmin', label: 'Setja spurningalista á skjólstæðing' },
-              { key: 'adhdworkupadmin', label: 'ADHD uppvinnslur' },
           ] as const}
           active={activeTab}
           onChange={(key) => setActiveTab(key as TabKey)}
@@ -39,10 +36,7 @@ export default function SignetPage() {
           <FilesTable apiPath="/signet/transfer/getSent" emptyMessage="Engar sendar skrár" />
         )}
         {activeTab === 'send' && <SendMessageForm />}
-        {activeTab === 'umbod_starfsmenn' && <UmbodTable />}
           {activeTab === 'waitinglist' && <WaitingListPage />}
-          {activeTab === 'formrequestadmin' && <FormRequestAdmin />}
-          {activeTab === 'adhdworkupadmin' && <ADHDWorkupAdminTable />}
       </div>
     </RequireAuth>
   );
