@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import RequireAuth from '@/components/RequireAuth';
 import Card from '@/components/Card';
 import PageTitle from '@/components/PageTitle';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { authService } from '@/lib/authService';
+
+const REFRESH_INTERVAL_MS = 45000; // 45 seconds
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE
 
@@ -60,43 +61,89 @@ export default function FilesTable({ apiPath, emptyMessage }: FilesTableProps) {
   const [pageSize, setPageSize] = useState<number>(25);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(false);
+
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  useEffect(() => {
-    const timeout = setTimeout(async () => {
-      const token = await authService.getToken();
-      const params = new URLSearchParams();
-      params.append('page', page.toString());
-      params.append('page_size', pageSize.toString());
-      if (filters.filename.length > 2) params.append('filename', filters.filename);
-      if (filters.creator.length > 2) params.append('name', filters.creator);
-      if (filters.creator_ssn.length > 3) params.append('ssn', filters.creator_ssn);
-      if (filters.group_name.length > 2) params.append('group_name', filters.group_name);
-      if (filters.seen === '1') params.append('seen', '1');
-      if (filters.seen === '0') params.append('seen', '0');
-      if (dateRange.from) params.append('date_from', dateRange.from.toISOString());
-      if (dateRange.to) params.append('date_to', dateRange.to.toISOString());
+  const fetchData = useCallback(async () => {
+    if (isLoggedOut) return;
 
-      let url = `${API_BASE}${apiPath}?${params.toString()}`
-      fetch(url, {
+    const token = await authService.getToken();
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('page_size', pageSize.toString());
+    if (filters.filename.length > 2) params.append('filename', filters.filename);
+    if (filters.creator.length > 2) params.append('name', filters.creator);
+    if (filters.creator_ssn.length > 3) params.append('ssn', filters.creator_ssn);
+    if (filters.group_name.length > 2) params.append('group_name', filters.group_name);
+    if (filters.seen === '1') params.append('seen', '1');
+    if (filters.seen === '0') params.append('seen', '0');
+    if (dateRange.from) params.append('date_from', dateRange.from.toISOString());
+    if (dateRange.to) params.append('date_to', dateRange.to.toISOString());
+
+    const url = `${API_BASE}${apiPath}?${params.toString()}`;
+
+    try {
+      const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
-        .then(res => res.json())
-        .then(json => {
-          if (!Array.isArray(json.results)) {
-            throw new Error("Invalid data from backend: results is not an array");
-          }
-          setRecords(json.results);
-          setTotalCount(json.count);
-        })
-        .catch(err => setError(err));
+      });
+
+      if (res.status === 401) {
+        setIsLoggedOut(true);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        return;
+      }
+
+      const json = await res.json();
+      if (!Array.isArray(json.results)) {
+        throw new Error("Invalid data from backend: results is not an array");
+      }
+      setRecords(json.results);
+      setTotalCount(json.count);
+    } catch (err) {
+      setError(err as Error);
+    }
+  }, [apiPath, filters, dateRange, page, pageSize, isLoggedOut]);
+
+  // Fetch on filter/pagination changes with debounce
+  useEffect(() => {
+    if (isLoggedOut) return;
+
+    const timeout = setTimeout(() => {
+      fetchData();
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [filters, dateRange, page, pageSize]);
+  }, [fetchData, isLoggedOut]);
+
+  // 45-second auto-refresh interval
+  useEffect(() => {
+    if (isLoggedOut) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+
+    intervalRef.current = setInterval(() => {
+      fetchData();
+    }, REFRESH_INTERVAL_MS);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [fetchData, isLoggedOut]);
 
   const updateFilter = (field: keyof typeof filters, value: string) => {
     setFilters({ ...filters, [field]: value });
@@ -177,8 +224,22 @@ export default function FilesTable({ apiPath, emptyMessage }: FilesTableProps) {
 
   return (
     <RequireAuth>
-      <div className="max-w-screen-xl mx-auto p-4">
+      <div className="max-w-screen-xl mx-auto p-4 relative">
         <PageTitle>Signet transfer</PageTitle>
+
+        {isLoggedOut && (
+          <div className="absolute inset-0 bg-gray-100 z-50 flex items-center justify-center">
+            <div className="text-center p-8">
+              <p className="text-lg text-gray-800">
+                Þú hefur verið skráður út. Vinsamlegast smelltu{' '}
+                <a href="/" className="text-blue-600 underline hover:text-blue-800">
+                  hér til þess að skrá þig inn aftur
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-4 mb-4">
           <div className="flex flex-col">
