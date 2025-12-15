@@ -8,57 +8,76 @@ import { AuthProvider, UserInfo } from "../authService";
 const msalInstance = new PublicClientApplication(msalConfig);
 
 let currentAccount: AccountInfo | null = null;
+let initialized = false;
+
+// Initialize MSAL and handle redirect response
+async function ensureInitialized() {
+  if (initialized) return;
+  await msalInstance.initialize();
+
+  // Handle redirect response if returning from login
+  try {
+    const response = await msalInstance.handleRedirectPromise();
+    if (response?.account) {
+      currentAccount = response.account;
+    }
+  } catch (err) {
+    console.error("Error handling redirect:", err);
+  }
+
+  initialized = true;
+}
 
 const msalProvider: AuthProvider = {
   async login() {
-    await msalInstance.initialize(); // Ensure instance is ready
-    console.log('redirectUri =', msalConfig.auth.redirectUri);
-console.log('clientId =', msalConfig.auth.clientId);
-console.log('authority =', msalConfig.auth.authority);
-    const loginResult = await msalInstance.loginPopup({
+    await ensureInitialized();
+
+    // Use redirect instead of popup to avoid popup blockers
+    await msalInstance.loginRedirect({
       scopes: ["api://821a8f5f-2dbb-436a-b049-eac62bb17edf/access_as_user"],
     });
-
-    currentAccount = loginResult.account;
   },
 
-async logout() {
-  await msalInstance.initialize(); // <-- add this line
+  async logout() {
+    await ensureInitialized();
 
-  if (currentAccount) {
-    await msalInstance.logoutPopup({ account: currentAccount });
-    currentAccount = null;
-  }
-},
+    if (currentAccount) {
+      await msalInstance.logoutRedirect({ account: currentAccount });
+      currentAccount = null;
+    }
+  },
 
 
-async getToken(): Promise<string | null> {
-  const accounts = msalInstance.getAllAccounts();
-  if (!accounts.length) return null;
+  async getToken(): Promise<string | null> {
+    await ensureInitialized();
 
-  const account = accounts[0];
-  currentAccount = account;
-
-  try {
-    await msalInstance.initialize(); // Ensure instance is ready
-    const tokenResult = await msalInstance.acquireTokenSilent({
-      scopes: ["api://" + msalConfig.auth.clientId + "/.default"],
-      account,
-    });
-
-    return tokenResult.accessToken;
-  } catch (err) {
-    console.error("Token acquisition failed:", err);
-    return null;
-  }
-},
-
-async getUser(): Promise<UserInfo | null> {
-  if (!currentAccount) {
     const accounts = msalInstance.getAllAccounts();
     if (!accounts.length) return null;
-    currentAccount = accounts[0];
-  }
+
+    const account = accounts[0];
+    currentAccount = account;
+
+    try {
+      const tokenResult = await msalInstance.acquireTokenSilent({
+        scopes: ["api://" + msalConfig.auth.clientId + "/.default"],
+        account,
+      });
+
+      return tokenResult.accessToken;
+    } catch (err) {
+      console.error("Token acquisition failed:", err);
+      return null;
+    }
+  },
+
+  async getUser(): Promise<UserInfo | null> {
+    await ensureInitialized();
+
+    if (!currentAccount) {
+      const accounts = msalInstance.getAllAccounts();
+      if (!accounts.length) return null;
+      currentAccount = accounts[0];
+    }
 
     return {
       name: currentAccount.name,
