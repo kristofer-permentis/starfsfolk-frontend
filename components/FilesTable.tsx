@@ -332,7 +332,7 @@ export default function FilesTable({ apiPath, emptyMessage }: FilesTableProps) {
   onClick={async (e) => {
     e.preventDefault();
     const token = await authService.getToken();
-    window.open(`${record.download_url}?access_token=${encodeURIComponent(token || '')}`, '_blank');
+    window.open(`${record.download_url}`, '_blank');
 
     // Mark as seen locally (only if not already)
     if (!record.seen) {
