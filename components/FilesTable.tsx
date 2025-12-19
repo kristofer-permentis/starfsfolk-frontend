@@ -331,11 +331,17 @@ export default function FilesTable({ apiPath, emptyMessage }: FilesTableProps) {
   href="#"
   onClick={async (e) => {
     e.preventDefault();
-    const token = await authService.getToken();
     window.open(`${record.download_url}`, '_blank');
 
-    // Mark as seen locally (only if not already)
+    // Mark as seen (both locally and on backend) if not already seen
     if (!record.seen) {
+      const token = await authService.getToken();
+      await fetch(`${API_BASE}/signet/transfer/toggleSeen/${record.id}/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       setRecords(prev =>
         prev.map(r =>
           r.id === record.id ? { ...r, seen: true } : r
