@@ -329,18 +329,13 @@ export default function FilesTable({ apiPath, emptyMessage }: FilesTableProps) {
                   <td className="p-2 border border-gray-200 break-words whitespace-normal min-w-[8rem]">
                     <a
   href="#"
-  onClick={async (e) => {
+  onClick={(e) => {
     e.preventDefault();
-    const token = await authService.getToken();
     window.open(`${record.download_url}`, '_blank');
 
-    // Mark as seen locally (only if not already)
+    // Mark as seen (both locally and on backend) if not already seen
     if (!record.seen) {
-      setRecords(prev =>
-        prev.map(r =>
-          r.id === record.id ? { ...r, seen: true } : r
-        )
-      );
+      toggleSeen(record.id);
     }
   }}
   className="text-[--pm-gray-dark] hover:underline"
